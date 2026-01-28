@@ -17,6 +17,7 @@ siga.define('nomina', {
 
   initComponent: function(){
     var me = this;
+    const _defaults=me.getInternal("field_defaults");
 
     me.setInternal({
       ventanaSeleccionarNomina: null,
@@ -34,6 +35,7 @@ siga.define('nomina', {
       cerrado: null,
       periodo_id: null,
       periodo_denominacion: null,
+      periodo_detalle: {},      
       nomina_id: [],
       nomina_denominacion: null,
     });
@@ -194,6 +196,7 @@ siga.define('nomina', {
 
                     me.internal.periodo_id=me.getCmp('id_periodo').getValue();
                     me.internal.periodo_denominacion=me.getCmp('id_periodo').getRawValue();
+                    me.internal.periodo_detalle=me.getCmp('id_periodo')?.selection?.getData();
 
                     me.internal.nomina_id=me.getCmp('id_nomina').getValue();
                     me.internal.nomina_denominacion=me.getCmp('id_nomina').getRawValue();
@@ -914,6 +917,7 @@ siga.define('nomina', {
         }
       ]
     });
+    //FIN VENTANA IMPORTACION DE CONCEPTOS DESDE EXCEL
 
     //VENTANA IMPORTACION DE CONCEPTOS DESDE EXCEL
     console.log("concepto_identificadores",me.internal.data.preload["concepto_identificadores"]);
@@ -1060,7 +1064,458 @@ siga.define('nomina', {
 
       ]
     });
+    //FIN VENTANA IMPORTACION DE CONCEPTOS DESDE EXCEL
 
+  
+    //VENTANA PARA CERRAR PERIODO
+    me.internal.ventanaCerrarPeriodo=Ext.create('Ext.window.Window', {
+      title: 'Cerrar Periodo / Abrir Nuevo',
+      minimizable: false,
+      maximizable: false,
+      closable: true,
+      modal: true,
+      width: 650,
+      height: 270,
+      resizable: true,
+      layout: 'anchor',
+      defaults: { ..._defaults, margin: undefined },
+      bodyStyle: 'padding: 5px 20px 0px 20px; background-color: #e8e8e8; border-color: #e8e8e8;',
+      autoScroll: true,
+      messageTimeOutHandler: null,
+      listeners: {
+        beforeshow: function(){
+          me.getCmp('messageVentanaCerrarPeriodo').setText("<div>&nbsp;</div>",false);
+        },
+        beforeclose: function(w,o){
+          me.internal.ventanaCerrarPeriodo.hide();
+          return false;
+        },
+        afterrender: function(){
+          //me.onCerrarPeriodoHeight();
+        }
+      },
+
+      abrir: function(){
+        if(!me.onNominaSeleccionada())
+          return;
+
+        me.getCmp("codigo_actual_VentanaCerrarPeriodo").setValue('');
+        me.getCmp("descripcion_actual_VentanaCerrarPeriodo").setValue('');
+        me.getCmp("fecha_actual_VentanaCerrarPeriodo").setValue('');
+        me.getCmp("tipo_periodo_VentanaCerrarPeriodo").setValue('');
+        me.getCmp("codigo_VentanaCerrarPeriodo").setValue('');
+        me.getCmp("descripcion_VentanaCerrarPeriodo").setValue('');
+        me.getCmp("fecha_inicio_VentanaCerrarPeriodo").setValue('');
+        me.getCmp("fecha_culminacion_VentanaCerrarPeriodo").setValue('');
+        me.getCmp("codigo_VentanaCerrarPeriodo").setValue('');
+        me.getCmp("codigo_VentanaCerrarPeriodo").setValue('');
+
+        var id_periodo=me.internal.periodo_id;
+        var tipo = me.internal.periodo_detalle['tipo'];
+        var fecha_inicio = me.internal.periodo_detalle['fecha_inicio'];        
+        var fecha_culminacion = me.internal.periodo_detalle['fecha_culminacion'];        
+        var codigo = me.internal.periodo_detalle['codigo'];
+        var descripcion = me.internal.periodo_detalle['descripcion'] ?? '';
+
+
+        me.getCmp("codigo_actual_VentanaCerrarPeriodo").setValue(codigo);
+        me.getCmp("descripcion_actual_VentanaCerrarPeriodo").setValue(descripcion);
+        me.getCmp("fecha_actual_VentanaCerrarPeriodo").setValue(me.internal.periodo_detalle['fecha'] ?? '');
+        me.getCmp("tipo_periodo_VentanaCerrarPeriodo").setValue(tipo ?? '');
+
+        
+
+        if(codigo){
+          var len = codigo.length;
+          //si el ultimo periodo del año, restablecer codifo
+          if(fecha_culminacion.substr(5)==="12-31"){ 
+            codigo = 0;
+          }
+
+          var codigo_numero = Number(codigo) + 1;          
+          var codigo_nuevo = String(codigo_numero>0?codigo_numero:0).padStart(len,"0");
+          me.getCmp("codigo_VentanaCerrarPeriodo").setValue(codigo_nuevo);
+        }        
+
+        const bisiesto = (a) => ((a%4==0 && a%100!=0)||(a%400==0));
+        const dias_mes = (a) => [31, bisiesto(a)?29:28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+
+        var fecha_inicio_nuevo="";
+        var fecha_culminacion_nuevo="";
+
+        if(fecha_inicio){
+          if(tipo === 'S'){ //semanal
+            fecha_inicio = Ext.Date.parse(fecha_culminacion, 'Y-m-d');
+            fecha_inicio_nuevo = Ext.Date.add(fecha_inicio, Ext.Date.DAY, 1);
+            fecha_culminacion_nuevo = Ext.Date.add(fecha_inicio, Ext.Date.DAY, 7);
+
+            
+
+            //DETECTAR FORMATO ALCALDIA MEJIA "SEMANA 01 DE ENERO" Fecha Inicio: Lunes, Fecha Fin: Viernes
+            const descripcion_array = descripcion.split(' ');
+            var n_semana_actual = descripcion_array?.[1] ? Number(descripcion_array?.[1]) : 0;
+            n_semana_actual = isNaN(n_semana_actual) ? -1 : n_semana_actual;
+
+            if(descripcion_array?.[0] === "SEMANA" && descripcion_array?.[2]==="DE" && descripcion_array?.[3]){
+              var dia_semana = fecha_inicio_nuevo.getDay();
+              var diasParaLunes = 0;
+              //si es el 1er dia del mes y es un dia de semana
+              if(fecha_inicio_nuevo.getDate()===1 && dia_semana >=1 && dia_semana<=5){
+                diasParaLunes = 0;
+              }
+              else { //hallar el proximo lunes
+                diasParaLunes = dia_semana === 1 ? 0 : (7 - dia_semana + 1) % 7;
+              }
+              fecha_inicio_nuevo = Ext.Date.add(fecha_inicio_nuevo, Ext.Date.DAY, diasParaLunes);
+
+
+              var diasParaViernes = 4;
+              if(dia_semana === 5){//si ya es viernes, no sumar nada
+                diasParaViernes = 0;
+              }
+              else if (dia_semana < 5) {
+                diasParaViernes = 5 - dia_semana;
+              }
+              
+              //Sumar 4 dias para que llegue a viernes
+              fecha_culminacion_nuevo = Ext.Date.add(fecha_inicio_nuevo, Ext.Date.DAY, diasParaViernes);
+
+              //si cambio de mes -> fecha_culminacion_nuevo sera el ultimo dia del mes fecha_inicio_nuevo
+              const mes_actual = fecha_inicio_nuevo.getMonth();
+              if(mes_actual !== fecha_culminacion_nuevo.getMonth()){
+                fecha_culminacion_nuevo = new Date(fecha_inicio_nuevo);
+                const ultimo_dia_mes = dias_mes(fecha_inicio_nuevo.getYear())[mes_actual];
+                ///console.log("ultimo_dia_mes", ultimo_dia_mes);
+                fecha_culminacion_nuevo.setDate(ultimo_dia_mes);
+                ///console.log("fecha_culminacion_nuevo",fecha_culminacion_nuevo);
+              }
+
+              //si cambio de mes fecha_inicio vs fecha_inicio_nuevo, reiniciar n_semana_actual a cero
+              if(mes_actual !== fecha_inicio.getMonth()){
+                n_semana_actual = 0;
+              }
+
+
+              descripcion = [
+                "SEMANA",
+                String(n_semana_actual + 1).padStart(2,"0"),
+                "DE",
+                meses[mes_actual]
+              ].join(" ");
+            }
+
+              
+
+
+            fecha_inicio_nuevo = Ext.Date.format(fecha_inicio_nuevo, 'Y-m-d');
+            fecha_culminacion_nuevo = Ext.Date.format(fecha_culminacion_nuevo, 'Y-m-d');
+            
+          }
+          else if(tipo === 'Q') {// quincenal
+            fecha_inicio = fecha_inicio.split('-');
+            var mes_reemplazar = "";
+            var mes_buscar = meses[Number(fecha_inicio[1])-1];
+            var fecha_inicio_dia = fecha_inicio[2];
+            var fecha_inicio_mes = fecha_inicio[1];
+            var fecha_inicio_anio = fecha_inicio[0];
+
+            if(fecha_inicio_dia === "01"){
+              fecha_inicio_nuevo = fecha_inicio_anio+"-"+fecha_inicio_mes+"-16";
+              var dia_mes = dias_mes(fecha_inicio_anio);
+              fecha_culminacion_nuevo = fecha_inicio_anio+"-"+fecha_inicio_mes+"-"+dia_mes[fecha_inicio_mes-1];
+
+              descripcion = descripcion.replaceAll("1RA", "2DA");
+              descripcion = descripcion.replaceAll("#1", "#2");
+
+            }
+            else if(fecha_inicio_dia === "16"){
+              var mes = Number(fecha_inicio_mes) + 1;
+              var anio = Number(fecha_inicio_anio);
+              if(mes>=13){
+                mes = "01";
+                anio++;
+                me.getCmp("codigo_VentanaCerrarPeriodo").setValue("1".padStart(codigo?.length ?? 3,"0"));
+              }
+              fecha_inicio_nuevo = anio+"-"+String(mes).padStart(2,"0")+"-01";
+              fecha_culminacion_nuevo = anio+"-"+String(mes).padStart(2,"0")+"-15";
+
+              descripcion = descripcion.replaceAll("2DA", "1RA");
+              descripcion = descripcion.replaceAll("#2", "#1");
+
+              var mes_reemplazar = meses[Number(mes)-1];
+              descripcion = descripcion.replaceAll(mes_buscar, mes_reemplazar);
+            }            
+          }
+
+          me.getCmp("fecha_inicio_VentanaCerrarPeriodo").setValue(fecha_inicio_nuevo);
+          me.getCmp("fecha_culminacion_VentanaCerrarPeriodo").setValue(fecha_culminacion_nuevo);
+        }
+
+
+
+        if(descripcion){          
+          me.getCmp("descripcion_VentanaCerrarPeriodo").setValue(descripcion);
+        }
+
+
+
+        me.internal.ventanaCerrarPeriodo.show();
+      },
+      
+      setMessage: function(_text,_color,_time){      
+        const me2 = this;
+        if(me2.messageTimeOutHandler)
+          window.clearTimeout(me2.messageTimeOutHandler);
+        
+        if(!me.getCmp('messageVentanaCerrarPeriodo')) return;
+        
+        if(!_text){            
+          me.getCmp('messageVentanaCerrarPeriodo').setText('&nbsp;',false);
+          return;
+        }        
+        if(!_color)
+          _color="black";
+        me.getCmp('messageVentanaCerrarPeriodo').setText("<div style='color: "+_color+";'>"+_text+"</div>",false);
+        if(!_time)
+          _time=10000;
+        me2.messageTimeOutHandler=setTimeout(function(){
+          me2.setMessage();
+        },_time);
+      },
+
+    
+      items:[
+        {
+          xtype: 'label',
+          id: me._('messageVentanaCerrarPeriodo'),
+          style:'margin: 5px 0px 0px 0px; text-align: center; font-style: italic;',
+          html: "&nbsp;",
+        },
+        {
+          xtype:'fieldcontainer',
+          fieldLabel: 'Cerrar Periodo',
+          layout: 'hbox',          
+          items:[
+            {
+              xtype:'textfield',
+              id: me._('codigo_actual_VentanaCerrarPeriodo'),
+              name: 'codigo_actual_VentanaCerrarPeriodo',
+              value: '',
+              width: 80,
+              margin: '0 0 0 0',
+              fieldStyle: 'color: #777;',
+              readOnly: true,
+            },
+            {
+              xtype:'textfield',
+              id: me._('descripcion_actual_VentanaCerrarPeriodo'),
+              name: 'descripcion_actual_VentanaCerrarPeriodo',
+              value: '',
+              flex: 1,
+              margin: '0 10 0 10',
+              fieldStyle: 'color: #777;',
+              readOnly: true,
+            },
+            {
+              xtype:'textfield',
+              id: me._('fecha_actual_VentanaCerrarPeriodo'),
+              name: 'fecha_actual_VentanaCerrarPeriodo',
+              value: '',
+              width: 150,
+              margin: '0 0 0 0',
+              fieldStyle: 'color: #777;',
+              readOnly: true,
+            },
+          ]
+        },
+        {
+          xtype: 'tbspacer',
+          flex: 1,
+          height: 20,
+        },
+        {
+          xtype:'fieldcontainer',
+          fieldLabel: 'Abrir Periodo',
+          layout: 'hbox',
+          items:[
+            {
+              xtype:'textfield',
+              id: me._('codigo_VentanaCerrarPeriodo'),
+              name: 'codigo_VentanaCerrarPeriodo',
+              value: '',
+              width: 80,
+              margin: '0 10 0 0',
+            },
+            {
+              xtype:'textfield',
+              id: me._('descripcion_VentanaCerrarPeriodo'),
+              name: 'descripcion_VentanaCerrarPeriodo',
+              value: '',
+              flex: 1,
+
+            },
+          ]
+        },
+        {
+          xtype: "container",
+          layout: "hbox",
+          defaults: _defaults,
+          items: [
+            {
+              xtype:'datefield',
+              id: me._('fecha_inicio_VentanaCerrarPeriodo'),
+              name: 'fecha_inicio_VentanaCerrarPeriodo',
+              margin: "5 0 0 0",
+              fieldLabel: 'Fecha Inicio',
+              submitFormat: 'Y-m-d',
+              value: '',
+              width: 150,
+            },
+            {
+              xtype:'datefield',
+              id: me._('fecha_culminacion_VentanaCerrarPeriodo'),
+              name: 'fecha_culminacion_VentanaCerrarPeriodo',
+              margin: "5 0 0 40",
+              fieldLabel: 'Fecha Culminación',
+              submitFormat: 'Y-m-d',
+              value: '',
+              width: 150,
+            },
+            {
+              xtype:'combobox',
+              id: me._('tipo_periodo_VentanaCerrarPeriodo'),
+              name: 'tipo_periodo_VentanaCerrarPeriodo',
+              fieldLabel: 'Tipo de Nómina/Periodo',
+              flex: 1,
+              margin: "5 0 0 40",
+              queryMode: "local",
+              store: {
+                fields: ['tipo','denominacion'],
+                data: []
+              },
+              displayField: 'denominacion',
+              valueField: 'tipo',
+              allowBlank: true,
+              forceSelection: true,
+              editable: false,
+              readOnly: true,
+              //disabled: true,
+              fieldStyle: 'color: #777;',
+              value: '',
+            },
+          ]
+        },
+        {
+          xtype: 'container',
+          anchor: '100%',
+          layout: 'hbox',
+          style: 'padding-top: 40px; padding-bottom: 10px;',
+          items: [
+            {
+              xtype: 'tbspacer',
+              flex: 1
+            },
+            {
+              xtype: 'button',
+              text: '<b>Aceptar</b>',
+              width: 150,
+              listeners: {
+                click: function(){
+                  
+                  var id_periodo=me.internal.periodo_id;
+                  var _codigo=Ext.String.trim(me.getCmp("codigo_VentanaCerrarPeriodo").getValue());
+                  var _descripcion=Ext.String.trim(me.getCmp("descripcion_VentanaCerrarPeriodo").getValue());
+                  var _fecha_inicio=me.getCmp("fecha_inicio_VentanaCerrarPeriodo").getValue();
+                  var _fecha_culminacion=me.getCmp("fecha_culminacion_VentanaCerrarPeriodo").getValue();
+
+                  if(!_codigo){
+                    me.internal.ventanaCerrarPeriodo.setMessage("Debe ingresar el código","red");
+                    return;
+                  }
+
+                  if(!_descripcion){
+                    me.internal.ventanaCerrarPeriodo.setMessage("Debe ingresar la descripción del periodo","red");
+                    return;
+                  }
+
+                  if(!_fecha_inicio){
+                    me.internal.ventanaCerrarPeriodo.setMessage("Debe ingresar la fecha de inicio","red");
+                    return;
+                  }
+
+                  var errors = me.getCmp("fecha_inicio_VentanaCerrarPeriodo").getErrors();
+                  if(errors.length){
+                    me.internal.ventanaCerrarPeriodo.setMessage(errors.join(', '),"red");
+                    return;
+                  }
+
+                  if(!_fecha_culminacion){
+                    me.internal.ventanaCerrarPeriodo.setMessage("Debe ingresar la fecha de culminación","red");
+                    return;
+                  }
+
+                  var errors = me.getCmp("fecha_culminacion_VentanaCerrarPeriodo").getErrors();
+                  if(errors.length){
+                    me.internal.ventanaCerrarPeriodo.setMessage(errors.join(', '),"red");
+                    return;
+                  }
+
+                  me.menuPersona({disabled: true});
+                  me.menuConcepto({disabled: true});
+                  me.menuPeriodo({disabled: true});
+                  //me.getCmp('btnContabilizar').setDisabled(true);
+
+                  var msgWait=Ext.Msg.wait('Cerrando periodo. Por favor espere...', me.getTitle(),{text:''});
+                  msgWait.setAlwaysOnTop(true);
+
+                  Ext.Ajax.request({
+                    method: 'POST',
+                    url:'module/nomina/',
+                    params: {
+                      action: 'onClose',
+                      id_periodo: id_periodo,
+                      detalle: Ext.JSON.encode({
+                        codigo: _codigo,
+                        descripcion: _descripcion,
+                        fecha_inicio: Ext.Date.format(_fecha_inicio, 'Y-m-d'),
+                        fecha_culminacion: Ext.Date.format(_fecha_culminacion, 'Y-m-d')
+                      })
+                    },
+                    success:function(request){
+                      msgWait.close();
+                      var result=Ext.JSON.decode(request.responseText);
+                      Ext.MessageBox.alert("Cerrar Período",result["message"]);
+                      //recargar el listado de periodos, para mostrar el nuevo periodo creado
+                      //me.getCmp('id_periodo').getStore().load();
+                      me.onActualizarDataPreload();
+                      me.onRecargar();
+                      me.internal.ventanaCerrarPeriodo.hide();
+                      window.open("report/nomina_recibo_pago.php?id_periodo="+id_periodo+"&generar=1");
+                    },
+                    failure:function(request){
+                      msgWait.close();
+                      var result=Ext.JSON.decode(request.responseText);
+                      Ext.MessageBox.alert("Cerrar Período","Error al realizar la operación.");
+                    }
+                  });
+
+
+
+
+
+                }
+              }
+            },
+            {
+              xtype: 'tbspacer',
+              flex: 1
+            }
+          ]
+        }
+      ]
+    });
+    //FIN VENTANA PARA CERRAR PERIODO
 
 
     //Barra de herramientas
@@ -3304,6 +3759,9 @@ siga.define('nomina', {
 
     var id_periodo=me.internal.periodo_id;
 
+    me.internal.ventanaCerrarPeriodo.abrir();
+    return;
+
     Ext.MessageBox.confirm( 'Cerrar Período',
                             '<b>\u00BFEst\u00e1 seguro de cerrar el período?</b><br> '+me.internal.periodo_denominacion+'',
                             function(btn,text){
@@ -3844,6 +4302,9 @@ siga.define('nomina', {
     else{
       me.getCmp("tipo_nomina_concepto_importar").fireEvent("change");
     }
+
+    //ACTUALIZAR DATA EN VENTANA CERRAR PERIODO
+    me.getCmp("tipo_periodo_VentanaCerrarPeriodo").getStore().setData(me.internal.data.preload["periodo_tipo"]);
 
     //ACTUALIZAR DATA EN VENTANA CONFIGURAR PROYECCION
     me.getCmp("identificador_proyeccion").getStore().setData(me.internal.data.preload["concepto_identificadores"]);

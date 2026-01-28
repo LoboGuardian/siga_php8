@@ -70,7 +70,8 @@ class MODULO extends nomina{
       case "onClose":
         header('Content-Type: text/plain; charset=utf-8');
         $access=SIGA::access("nomina_cerrar_periodo");
-        print json_encode(self::onClose($access,SIGA::param("id_periodo")));
+        $detalle=json_decode(SIGA::param("detalle",false),true);
+        print json_encode(self::onClose($access,SIGA::param("id_periodo"),$detalle));
         break;
       case "onContabilizar":
         header('Content-Type: text/plain; charset=utf-8');

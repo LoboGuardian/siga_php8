@@ -1156,7 +1156,7 @@ class nomina{
   }
 
 
-  public static function onClose($access,$id_periodo,$extra=""){
+  public static function onClose($access,$id_periodo,$detalle=NULL){
     if($access!="rw"){
       return array("success"=>false, "message"=>"No tiene permisos para cerrar el período.");
       exit;
@@ -1174,173 +1174,196 @@ class nomina{
     $n_dias=NULL;
     $tipo=$periodo[0]['tipo'];
 
-    switch($tipo){
-      case "Q"://quincenal
-        $fecha=explode("-",$periodo[0]['fecha_inicio']);
-        $codigo=str_pad(intval($periodo[0]['codigo'])+1, 3, "0", STR_PAD_LEFT);
-        $tipo="Q";
+    if($detalle){
+      $codigo = isset($detalle['codigo']) ? str_clear($detalle['codigo']) : '';
+      $descripcion = isset($detalle['descripcion']) ? str_clear($detalle['descripcion']) : '';
+      $fecha_i = isset($detalle['fecha_inicio']) ? str_clear($detalle['fecha_inicio']) : '';
+      $fecha_c = isset($detalle['fecha_culminacion']) ? str_clear($detalle['fecha_culminacion']) : '';
 
-        $n_dias=abs(floor((strtotime($periodo[0]['fecha_culminacion'])-strtotime($periodo[0]['fecha_inicio']))/(60*60*24))+1);
-        if($n_dias==7){
-          $fecha_i=date("Y-m-d",strtotime($periodo[0]['fecha_culminacion'])+60*60*24);
-          $fecha_c=date("Y-m-d",strtotime($periodo[0]['fecha_culminacion'])+60*60*24*7);
-        }
-        else{
-          if($fecha[2]=="01"){
-            $dia="16";
-            $mes=$fecha[1];
-            $anio=$fecha[0];
-            $dm=dias_meses($anio);
-            $fecha_i="$anio-$mes-$dia";
-            $fecha_c="$anio-$mes-".$dm[intval($mes)-1];
+      if(!$codigo){
+        return ["success"=>false, "message"=>"El codigo del nuevo periodo se encuentra vacio."];
+      }
+      if(!$descripcion){
+        return ["success"=>false, "message"=>"La descripcion del nuevo periodo se encuentra vacia."];
+      }
+      if(!$fecha_i){
+        return ["success"=>false, "message"=>"La fecha de inicio del nuevo periodo se encuentra vacia."];
+      }
+      if(!$fecha_c){
+        return ["success"=>false, "message"=>"La fecha de culminación del nuevo periodo se encuentra vacia."];
+      }
+    }
+    else{
+      switch($tipo){
+        case "Q"://quincenal
+          $fecha=explode("-",$periodo[0]['fecha_inicio']);
+          $codigo=str_pad(intval($periodo[0]['codigo'])+1, 3, "0", STR_PAD_LEFT);
+          $tipo="Q";
+
+          $n_dias=abs(floor((strtotime($periodo[0]['fecha_culminacion'])-strtotime($periodo[0]['fecha_inicio']))/(60*60*24))+1);
+          if($n_dias==7){
+            $fecha_i=date("Y-m-d",strtotime($periodo[0]['fecha_culminacion'])+60*60*24);
+            $fecha_c=date("Y-m-d",strtotime($periodo[0]['fecha_culminacion'])+60*60*24*7);
           }
-          else if($fecha[2]=="16"){
-            $dia="01";
-            $mes=str_pad(intval($fecha[1])+1, 2, "0", STR_PAD_LEFT);
-            $anio=$fecha[0];
-            if($mes=="13"){//si el mes siguientes es superior a 12 (diciembre), significa q viene enero
-              $codigo="001";
-              $dia="01";
-              $mes="01";
-              $anio=intval($fecha[0])+1;
+          else{
+            if($fecha[2]=="01"){
+              $dia="16";
+              $mes=$fecha[1];
+              $anio=$fecha[0];
+              $dm=dias_meses($anio);
+              $fecha_i="$anio-$mes-$dia";
+              $fecha_c="$anio-$mes-".$dm[intval($mes)-1];
             }
-            $fecha_i="$anio-$mes-$dia";
-            $fecha_c="$anio-$mes-15";
+            else if($fecha[2]=="16"){
+              $dia="01";
+              $mes=str_pad(intval($fecha[1])+1, 2, "0", STR_PAD_LEFT);
+              $anio=$fecha[0];
+              if($mes=="13"){//si el mes siguientes es superior a 12 (diciembre), significa q viene enero
+                $codigo="001";
+                $dia="01";
+                $mes="01";
+                $anio=intval($fecha[0])+1;
+              }
+              $fecha_i="$anio-$mes-$dia";
+              $fecha_c="$anio-$mes-15";
+            }
+            else{
+              //error, no debería cumplirse
+              return array("success"=>false, "message"=>"Error en los parametros para la creación del siguiente periodo. Tipo: 'Q'. ");
+              exit;
+            }
+
+          }
+
+          break;
+        case "M"://mensual
+          $fecha=explode("-",$periodo[0]['fecha_inicio']);
+          $codigo=str_pad(intval($periodo[0]['codigo'])+1, 3, "0", STR_PAD_LEFT);
+          $tipo="M";
+
+          $dia="01";
+          $mes=intval($fecha[1])+1;
+          $anio=intval($fecha[0]);
+          if($mes>=12){
+            $mes=1;
+            $anio++;
+          }
+          $mes=str_pad($mes, 2, "0", STR_PAD_LEFT);
+          $dm=dias_meses($anio);
+          $fecha_i="$anio-$mes-$dia";
+          $fecha_c="$anio-$mes-".$dm[intval($mes)-1];
+          break;
+        case "6"://semestral
+          $fecha=explode("-",$periodo[0]['fecha_inicio']);
+          $tipo="S";
+          if($fecha[1]=="01"){//si es el 1er semestre
+            $codigo="002";
+            $anio=$fecha[0];
+            $fecha_i="$anio-07-01";
+            $fecha_c="$anio-12-31";
+          }
+          else if($fecha[1]=="07"){//si es el 2do semestre
+            $codigo="001";
+            $anio=intval($fecha[0])+1;
+            $fecha_i="$anio-01-01";
+            $fecha_c="$anio-06-30";
           }
           else{
             //error, no debería cumplirse
-            return array("success"=>false, "message"=>"Error en los parametros para la creación del siguiente periodo. Tipo: 'Q'. ");
+            return array("success"=>false, "message"=>"Error en los parametros para la creación del siguiente periodo. Tipo: '6'. ");
             exit;
           }
-
-        }
-
-        break;
-      case "M"://mensual
-        $fecha=explode("-",$periodo[0]['fecha_inicio']);
-        $codigo=str_pad(intval($periodo[0]['codigo'])+1, 3, "0", STR_PAD_LEFT);
-        $tipo="M";
-
-        $dia="01";
-        $mes=intval($fecha[1])+1;
-        $anio=intval($fecha[0]);
-        if($mes>=12){
-          $mes=1;
-          $anio++;
-        }
-        $mes=str_pad($mes, 2, "0", STR_PAD_LEFT);
-        $dm=dias_meses($anio);
-        $fecha_i="$anio-$mes-$dia";
-        $fecha_c="$anio-$mes-".$dm[intval($mes)-1];
-        break;
-      case "6"://semestral
-        $fecha=explode("-",$periodo[0]['fecha_inicio']);
-        $tipo="S";
-        if($fecha[1]=="01"){//si es el 1er semestre
+          break;
+        /*case "S"://Semanal
+          $fecha=explode("-",$periodo[0]['fecha_inicio']);
+          $tipo="S";
+          if($fecha[1]=="01"){//si es el 1er semestre
+            $codigo="002";
+            $anio=$fecha[0];
+            $fecha_i="$anio-07-01";
+            $fecha_c="$anio-12-31";
+          }
+          else if($fecha[1]=="07"){//si es el 2do semestre
+            $codigo="001";
+            $anio=intval($fecha[0])+1;
+            $fecha_i="$anio-01-01";
+            $fecha_c="$anio-06-30";
+          }
+          else{
+            //error, no debería cumplirse
+            return array("success"=>false, "message"=>"Error en los parametros para la creación del siguiente periodo. Tipo: 'S'. ");
+            exit;
+          }
+          break;*/
+        default:
+          //leer estos valores de la interfaz
           $codigo="002";
-          $anio=$fecha[0];
-          $fecha_i="$anio-07-01";
-          $fecha_c="$anio-12-31";
-        }
-        else if($fecha[1]=="07"){//si es el 2do semestre
-          $codigo="001";
-          $anio=intval($fecha[0])+1;
-          $fecha_i="$anio-01-01";
-          $fecha_c="$anio-06-30";
-        }
-        else{
-          //error, no debería cumplirse
-          return array("success"=>false, "message"=>"Error en los parametros para la creación del siguiente periodo. Tipo: '6'. ");
-          exit;
-        }
-        break;
-      /*case "S"://Semanal
-        $fecha=explode("-",$periodo[0]['fecha_inicio']);
-        $tipo="S";
-        if($fecha[1]=="01"){//si es el 1er semestre
-          $codigo="002";
-          $anio=$fecha[0];
-          $fecha_i="$anio-07-01";
-          $fecha_c="$anio-12-31";
-        }
-        else if($fecha[1]=="07"){//si es el 2do semestre
-          $codigo="001";
-          $anio=intval($fecha[0])+1;
-          $fecha_i="$anio-01-01";
-          $fecha_c="$anio-06-30";
-        }
-        else{
-          //error, no debería cumplirse
-          return array("success"=>false, "message"=>"Error en los parametros para la creación del siguiente periodo. Tipo: 'S'. ");
-          exit;
-        }
-        break;*/
-      default:
-        //leer estos valores de la interfaz
-        $codigo="002";
-        $fecha_i="2015-11-16";
-        $fecha_c="2015-11-30";
+          $fecha_i="2015-11-16";
+          $fecha_c="2015-11-30";
 
-        return array("success"=>false, "message"=>"Error en los parametros para la creación del siguiente periodo. Tipo: '".$periodo[0]['tipo']."'. ");
-        exit;
+          return array("success"=>false, "message"=>"Error en los parametros para la creación del siguiente periodo. Tipo: '".$periodo[0]['tipo']."'. ");
+          exit;
+      }
+
+      include_once(SIGA::path()."/library/functions/letra_mes.php");
+      if($n_dias==7){
+        $fecha=explode("-",$fecha_i);//2018-10-01
+        $n=intval(($fecha[2]*1/7)+1);
+        $mes=strtoupper(letra_mes($fecha[1]));
+        $descripcion="'$mes ".$fecha[0]." - SEMANA #$n'";
+      }
+      else{
+        //ingresar la descripcion
+        $array_descripcion=array( "ENERO $anio - QUINCENA #1",       "ENERO $anio - QUINCENA #2",
+                                  "FEBRERO $anio - QUINCENA #1",     "FEBRERO $anio - QUINCENA #2",
+                                  "MARZO $anio - QUINCENA #1",       "MARZO $anio - QUINCENA #2",
+                                  "ABRIL $anio - QUINCENA #1",       "ABRIL $anio - QUINCENA #2",
+                                  "MAYO $anio - QUINCENA #1",        "MAYO $anio - QUINCENA #2",
+                                  "JUNIO $anio - QUINCENA #1",       "JUNIO $anio - QUINCENA #2",
+                                  "JULIO $anio - QUINCENA #1",       "JULIO $anio - QUINCENA #2",
+                                  "AGOSTO $anio - QUINCENA #1",      "AGOSTO $anio - QUINCENA #2",
+                                  "SEPTIEMBRE $anio - QUINCENA #1",  "SEPTIEMBRE $anio - QUINCENA #2",
+                                  "OCTUBRE $anio - QUINCENA #1",     "OCTUBRE $anio - QUINCENA #2",
+                                  "NOVIEMBRE $anio - QUINCENA #1",   "NOVIEMBRE $anio - QUINCENA #2",
+                                  "DICIEMBRE $anio - QUINCENA #1",   "DICIEMBRE $anio - QUINCENA #2",
+                                  "ENERO ".($anio+1)." - QUINCENA #1",
+                                  //PARA PERIODO MENSUALES DE LA CESTATICKET SOCIALISTA
+                                  "ENERO $anio - CESTATICKET SOCIALISTA",
+                                  "FEBRERO $anio - CESTATICKET SOCIALISTA",
+                                  "MARZO $anio - CESTATICKET SOCIALISTA",
+                                  "ABRIL $anio - CESTATICKET SOCIALISTA",
+                                  "MAYO $anio - CESTATICKET SOCIALISTA",
+                                  "JUNIO $anio - CESTATICKET SOCIALISTA",
+                                  "JULIO $anio - CESTATICKET SOCIALISTA",
+                                  "AGOSTO $anio - CESTATICKET SOCIALISTA",
+                                  "SEPTIEMBRE $anio - CESTATICKET SOCIALISTA",
+                                  "OCTUBRE $anio - CESTATICKET SOCIALISTA",
+                                  "NOVIEMBRE $anio - CESTATICKET SOCIALISTA",
+                                  "DICIEMBRE $anio - CESTATICKET SOCIALISTA",
+                                  "ENERO ".($anio+1)." - CESTATICKET SOCIALISTA"
+                                  );
+
+        $descripcion="null";
+        for($d=0;$d<count($array_descripcion)-1;$d++){
+          if($array_descripcion[$d]==$periodo[0]['descripcion']){
+            $descripcion="'".$array_descripcion[$d+1]."'";
+            break;
+          }
+        }
+
+      }
     }
+
 
 
 
     //verificar si el periodo a insertar no existe
-    $existe=$db->Execute("SELECT count(*) modulo_nomina.periodo WHERE codigo='$codigo' AND tipo='$tipo' AND fecha_inicio='$fecha_i' AND fecha_culminacion='$fecha_c'");
-    if(isset($existe[0][0])){
-      return array("success"=>false, "message"=>"No se puedo cerrar, el périodo $codigo ya existe. ");
+    $existe=$db->Execute("SELECT count(*) FROM modulo_nomina.periodo WHERE codigo='$codigo' AND tipo='$tipo' AND fecha_inicio='$fecha_i' AND fecha_culminacion='$fecha_c'");
+    if(isset($existe[0][0]) && $existe[0][0]>0){
+      return array("success"=>false, "message"=>"Periodo no creado, el periodo $codigo ya existe. ");
       exit;
     }
-
-    include_once(SIGA::path()."/library/functions/letra_mes.php");
-    if($n_dias==7){
-      $fecha=explode("-",$fecha_i);//2018-10-01
-      $n=intval(($fecha[2]*1/7)+1);
-      $mes=strtoupper(letra_mes($fecha[1]));
-      $descripcion="'$mes ".$fecha[0]." - SEMANA #$n'";
-    }
-    else{
-      //ingresar la descripcion
-      $array_descripcion=array( "ENERO $anio - QUINCENA #1",       "ENERO $anio - QUINCENA #2",
-                                "FEBRERO $anio - QUINCENA #1",     "FEBRERO $anio - QUINCENA #2",
-                                "MARZO $anio - QUINCENA #1",       "MARZO $anio - QUINCENA #2",
-                                "ABRIL $anio - QUINCENA #1",       "ABRIL $anio - QUINCENA #2",
-                                "MAYO $anio - QUINCENA #1",        "MAYO $anio - QUINCENA #2",
-                                "JUNIO $anio - QUINCENA #1",       "JUNIO $anio - QUINCENA #2",
-                                "JULIO $anio - QUINCENA #1",       "JULIO $anio - QUINCENA #2",
-                                "AGOSTO $anio - QUINCENA #1",      "AGOSTO $anio - QUINCENA #2",
-                                "SEPTIEMBRE $anio - QUINCENA #1",  "SEPTIEMBRE $anio - QUINCENA #2",
-                                "OCTUBRE $anio - QUINCENA #1",     "OCTUBRE $anio - QUINCENA #2",
-                                "NOVIEMBRE $anio - QUINCENA #1",   "NOVIEMBRE $anio - QUINCENA #2",
-                                "DICIEMBRE $anio - QUINCENA #1",   "DICIEMBRE $anio - QUINCENA #2",
-                                "ENERO ".($anio+1)." - QUINCENA #1",
-                                //PARA PERIODO MENSUALES DE LA CESTATICKET SOCIALISTA
-                                "ENERO $anio - CESTATICKET SOCIALISTA",
-                                "FEBRERO $anio - CESTATICKET SOCIALISTA",
-                                "MARZO $anio - CESTATICKET SOCIALISTA",
-                                "ABRIL $anio - CESTATICKET SOCIALISTA",
-                                "MAYO $anio - CESTATICKET SOCIALISTA",
-                                "JUNIO $anio - CESTATICKET SOCIALISTA",
-                                "JULIO $anio - CESTATICKET SOCIALISTA",
-                                "AGOSTO $anio - CESTATICKET SOCIALISTA",
-                                "SEPTIEMBRE $anio - CESTATICKET SOCIALISTA",
-                                "OCTUBRE $anio - CESTATICKET SOCIALISTA",
-                                "NOVIEMBRE $anio - CESTATICKET SOCIALISTA",
-                                "DICIEMBRE $anio - CESTATICKET SOCIALISTA",
-                                "ENERO ".($anio+1)." - CESTATICKET SOCIALISTA"
-                                );
-
-      $descripcion="null";
-      for($d=0;$d<count($array_descripcion)-1;$d++){
-        if($array_descripcion[$d]==$periodo[0]['descripcion']){
-          $descripcion="'".$array_descripcion[$d+1]."'";
-          break;
-        }
-      }
-
-    }
+    
 
     /*print_r( $array_descripcion);
 
@@ -1350,7 +1373,7 @@ class nomina{
     $db->Execute("BEGIN WORK");
     //Insertar registro (periodo nuevo)
     $result=$db->Execute("INSERT INTO modulo_nomina.periodo(codigo,tipo,fecha_inicio,fecha_culminacion,descripcion)
-                         VALUES('$codigo','$tipo','$fecha_i','$fecha_c',$descripcion) RETURNING id");
+                         VALUES('$codigo','$tipo','$fecha_i','$fecha_c','$descripcion') RETURNING id");
 
     //Si hay error al insertar
     if(!$result){
@@ -1367,7 +1390,25 @@ class nomina{
     $id_periodo_nuevo=$result[0][0];
 
     //buscar información del periodo actual, para copiar al nuevo periodo
-    //buscar los conceptos para cada ficha en el periodo actual
+    //copiar los conceptos agregados a periodo
+    $db->Execute("
+      INSERT INTO modulo_nomina.concepto_periodo(id_periodo,id_concepto,id_nomina)
+      SELECT '$id_periodo_nuevo' as id_periodo, id_concepto, id_nomina FROM modulo_nomina.concepto_periodo WHERE id_periodo='$id_periodo'
+    ");
+    //copiar los conceptos de las fichas al periodo actual
+    $db->Execute("
+      INSERT INTO modulo_nomina.ficha_concepto(id_periodo,id_ficha,id_concepto,id_nomina, valor)
+      SELECT '$id_periodo_nuevo' as id_periodo, id_ficha, id_concepto, id_nomina, valor FROM modulo_nomina.ficha_concepto WHERE id_periodo='$id_periodo'
+    ");
+    //copiar las notas periodo
+    $db->Execute("
+      INSERT INTO modulo_nomina.periodo_nota(id_periodo,id_nomina,nota)
+      SELECT '$id_periodo_nuevo' as id_periodo, id_nomina, nota FROM modulo_nomina.periodo_nota WHERE id_periodo='$id_periodo'
+    ");
+
+
+
+    /*
     $ficha_concepto=$db->Execute("SELECT id_nomina, id_ficha, id_concepto, valor FROM modulo_nomina.ficha_concepto WHERE id_periodo=$id_periodo");
     if(!$ficha_concepto){
       $mensajeDB=$db->GetMsgErrorClear();
@@ -1429,7 +1470,7 @@ class nomina{
         $db->Execute("ROLLBACK WORK");
         return array("success"=>false, "message"=>"Error al copiar las notas a nuevo periodo.", "messageDB"=>"$mensajeDB");
       }
-    }
+    }*/
 
     //cerrar periodo
     $db->Update("modulo_nomina.periodo",array("cerrado"=>"true"),"id=$id_periodo");

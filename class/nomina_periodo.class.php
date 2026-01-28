@@ -148,7 +148,7 @@ class nomina_periodo{
 
     $id_periodo=$result[0]["id"];
     if($id_periodo){
-      $db->Execute("
+      /*$db->Execute("
         INSERT INTO modulo_nomina.concepto_periodo(
           id_periodo,
           id_concepto,
@@ -159,7 +159,7 @@ class nomina_periodo{
           id_concepto,
           id_nomina
         FROM modulo_nomina.concepto_periodo WHERE id_periodo='$id'
-      ");
+      ");*/
 
       $db->Execute("
         INSERT INTO modulo_nomina.concepto_periodo(id_periodo,id_concepto,id_nomina)
