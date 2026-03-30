@@ -2,7 +2,7 @@ siga.define('ficha', {
   extend: 'siga.window',
   title: 'Nómina - Ficha',
   width: 880,
-  height: 720,
+  height: 760,
 
   initComponent: function(){
     var me = this;
@@ -389,6 +389,57 @@ siga.define('ficha', {
                   }
                 ]
               },
+              //Unidad / Coordinación
+              {
+                xtype: 'container',
+                defaults: _defaults,
+                layout: 'hbox',
+                items: [
+                  {
+                    xtype: 'combobox',
+                    id: me._('id_unidad_coordinacion'),
+                    name: 'id_unidad_coordinacion',
+                    flex: 1,
+                    margin: '5px 0 0 0',
+                    fieldLabel: 'Unidad Administrativa',
+                    editable: false,
+                    queryMode: "local",
+                    store: {
+                      fields: ['id','coordinacion'],
+                      autoLoad: true,
+                      pageSize: 100,
+                      proxy: {
+                        type:'ajax',
+                        url: 'module/unidad_coordinacion/',
+                        actionMethods:  {read: "POST"},//actionMethods:'POST',actionMethods:'POST',
+                        timeout: 3600000,
+                        reader: {
+                          type: 'json',
+                          rootProperty: 'result',
+                          totalProperty:'total'
+                        },
+                        extraParams: {
+                          action: 'onListSelect'
+                        }
+                      },
+                      listeners: {
+                        load: function(store, records, successful){
+                          store.insert(0, [{
+                            coordinacion: 'NO APLICA',
+                            id: '0'
+                          }]);
+                          me.getCmp("id_unidad_coordinacion").setValue('0');
+                        }
+                      }
+                    },
+                    displayField: 'coordinacion',
+                    valueField: 'id',
+                    allowBlank: true,
+                    forceSelection: true
+                  },
+                ]
+              },
+              //Codigo Asistencia / Estatus Activo
               {
                 xtype: 'container',
                 defaults: _defaults,
@@ -427,9 +478,7 @@ siga.define('ficha', {
                   }
                 ]
               },
-
-
-
+              
             ]
           },
           {
@@ -448,7 +497,7 @@ siga.define('ficha', {
                   type: 'vbox',
                   align: 'center'
                 },
-                height: 315,
+                height: 355,
                 items: [
                   {
                     xtype: "image",
@@ -1333,6 +1382,8 @@ siga.define('ficha', {
       buscar_cedula: ''
     });
 
+    me.getCmp('cedula').setValue('');
+
     me.getCmp("container_ingreso_egreso").removeAll();
     me.getCmp("gridCargaFamiliar").getStore().removeAll();
     me.onAddFechaIngresoEgreso(0);
@@ -1340,10 +1391,12 @@ siga.define('ficha', {
     //me.getCmp('tab_data').getForm().reset();
     var fields = me.getCmp('tab_data').getForm().getFields();
     fields.each(function(field) {
-      if (field.name !== 'id_periodo' && field.name !== 'tipo_periodo') {
-        field.reset();
+      if (field.name === 'id_periodo' || field.name === 'tipo_periodo') {
+        return;
       }
+      field.reset();
     });
+    me.getCmp('id_unidad_coordinacion').setValue('0');
 
     me.getCmp("foto").setSrc("image/photo-default.png");
     me.getCmp('archivos').setRootNode({expanded: true, children: []});
@@ -1468,6 +1521,7 @@ siga.define('ficha', {
       me.getCmp('antiguedad_total').setValue("0");
       me.getCmp('profesionalizacion_porcentaje').setValue("0");
       me.getCmp('activo').setValue("");
+      me.getCmp('id_unidad_coordinacion').setValue("0");
 
       me.getCmp('archivos').setRootNode({expanded: true, children: []});
 
@@ -1523,6 +1577,8 @@ siga.define('ficha', {
       me.antiguedad_anio=result[0]['antiguedad_anio']*1;
 
     me.getCmp('antiguedad_total').setValue(result[0]['antiguedad_apn']*1+me.antiguedad_anio*1);
+
+    me.getCmp('id_unidad_coordinacion').setValue(result[0]['id_unidad_coordinacion'] ?? '0');
 
     me.getCmp('codigo').setValue(result[0]['codigo']);
     me.getCmp('activo').setValue(result[0]['activo']);

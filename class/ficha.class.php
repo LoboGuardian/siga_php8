@@ -66,6 +66,7 @@ class ficha{
             F.fecha_ingreso,
             F.fecha_egreso,
             F.codigo,
+            F.id_unidad_coordinacion,
             F.extension,
             F.activo,
             F.cuenta_nomina,
@@ -330,6 +331,7 @@ class ficha{
                                 $profesionalizacion_porcentaje,
                                 $codigo,
                                 $activo,
+                                $id_unidad_coordinacion,
                                 $grupo_familiar=NULL){
 
     if($id!="" and !($access=="rw"))//solo el acceso 'rw' es permitido
@@ -396,6 +398,8 @@ class ficha{
     if(!$result["success"]) return $result;
     $id_persona=$result["id"];
 
+    $unidad_coordinacion = $id_unidad_coordinacion && $id_unidad_coordinacion > 0 ? "'$id_unidad_coordinacion'" : "NULL";
+
     if($id!=""){//si es modificar un registro
       //Modificar registro
       $data=array("id_persona"=>"$id_persona",
@@ -407,6 +411,7 @@ class ficha{
                   "profesionalizacion_porcentaje"=>"".(!$profesionalizacion_porcentaje?"0":"'$profesionalizacion_porcentaje'")."",
                   "codigo"=>"".(!$codigo?"null":"'$codigo'")."",
                   "extension"=>"'$extension'",
+                  "id_unidad_coordinacion" => "$unidad_coordinacion",
                   "activo"=>"'$activo'");
       $result=$db->Update("modulo_nomina.ficha",$data,"id='$id'");
 
@@ -415,8 +420,8 @@ class ficha{
     }
     else{//si es nuevo
       //Insertar registro
-      $result=$db->Execute("INSERT INTO modulo_nomina.ficha(id_persona,fecha_ingreso,fecha_egreso,cuenta_nomina,id_escala_salarial,antiguedad_apn,profesionalizacion_porcentaje,codigo,activo)
-                            VALUES('$id_persona',$fecha_ingreso,$fecha_egreso,'$cuenta_nomina',".(!$id_escala_salarial?"null":"'$id_escala_salarial'").",".(!$antiguedad_apn?"0":"$antiguedad_apn").",".(!$profesionalizacion_porcentaje?"0":"$profesionalizacion_porcentaje").",".(!$codigo?"null":"'$codigo'").",'$activo') RETURNING id");
+      $result=$db->Execute("INSERT INTO modulo_nomina.ficha(id_persona,fecha_ingreso,fecha_egreso,cuenta_nomina,id_escala_salarial,antiguedad_apn,profesionalizacion_porcentaje,codigo,activo,id_unidad_coordinacion)
+                            VALUES('$id_persona',$fecha_ingreso,$fecha_egreso,'$cuenta_nomina',".(!$id_escala_salarial?"null":"'$id_escala_salarial'").",".(!$antiguedad_apn?"0":"$antiguedad_apn").",".(!$profesionalizacion_porcentaje?"0":"$profesionalizacion_porcentaje").",".(!$codigo?"null":"'$codigo'").",'$activo',$unidad_coordinacion) RETURNING id");
 
       //Si hay error al modificar o insertar
       if(!$result)

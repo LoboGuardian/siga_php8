@@ -72,6 +72,7 @@ class MODULO extends ficha{
                                        SIGA::param("profesionalizacion_porcentaje"),
                                        SIGA::param("codigo"),
                                        SIGA::param("activo"),
+                                       SIGA::param("id_unidad_coordinacion"),
                                        $grupo_familiar));
         break;
 

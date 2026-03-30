@@ -508,72 +508,6 @@ class nomina{
     return $return;
   }
 
-  public static function onAddEscala($access,$id_nomina,$id_periodo,$ids_ficha,$id_concepto){
-    $db=SIGA::DBController();
-
-    $periodo=$db->Execute("SELECT fecha_culminacion, cerrado FROM modulo_nomina.periodo WHERE id=$id_periodo");
-    if($periodo[0]["cerrado"]==='t'){
-      exit;
-    }
-
-
-    $concepto=$db->Execute("SELECT
-                              identificador
-                            FROM
-                              modulo_nomina.concepto
-                            WHERE
-                              id=$id_concepto");
-    if(!isset($concepto[0]["identificador"])) return [];
-
-    $config=$db->Execute("SELECT
-                              definicion
-                            FROM
-                              modulo_nomina.escala_salarial_configuracion
-                            WHERE
-                              campo ilike 'sueldo_basico'");
-    if(!isset($config[0]["definicion"])) return ["b"];
-    $config=explode(",", $config[0]["definicion"]);
-
-    if(!in_array($concepto[0]["identificador"],$config)) return ["c"];
-
-
-    if(count($ids_ficha)===1 and $ids_ficha[0]==='*'){
-      //$F=$db->Execute("SELECT id
-      //              FROM modulo_nomina.ficha
-      //              WHERE id in (select distinct id_ficha from modulo_nomina.ficha_concepto where id_periodo=$id_periodo and id_nomina=$id_nomina)");
-      $F=$db->Execute("SELECT DISTINCT id_ficha FROM modulo_nomina.ficha_concepto WHERE id_periodo=$id_periodo AND id_nomina=$id_nomina");
-      $ids_ficha=array();
-      for($i=0;$i<count($F);$i++)
-        $ids_ficha[$i]=$F[$i]["id_ficha"];
-    }
-
-    $return=array();
-    for($i=0;$i<count($ids_ficha);$i++){
-      $id_ficha=$ids_ficha[$i];
-      //buscar el valor de la escala para la persona
-      $escala=$db->Execute("SELECT sueldo_basico from modulo_nomina.ficha F, modulo_nomina.escala_salarial ES where F.id='$id_ficha' and F.id_escala_salarial=ES.id");
-      $valor=0;
-      if(isset($escala[0]["sueldo_basico"]))
-        if(is_numeric($escala[0]["sueldo_basico"]))
-          $valor=$escala[0]["sueldo_basico"];
-
-
-      //borrar registros existentes
-      $db->Delete("modulo_nomina.ficha_concepto","id_nomina=$id_nomina and id_periodo=$id_periodo and id_ficha=$id_ficha and id_concepto=$id_concepto");
-
-      $db->Insert("modulo_nomina.ficha_concepto",array(
-                                        "id_nomina"=>"$id_nomina",
-                                        "id_periodo"=>"$id_periodo",
-                                        "id_ficha"=>"$id_ficha",
-                                        "id_concepto"=>"$id_concepto",
-                                         "valor"=>"$valor"));
-
-      $return[$i]["id_ficha"]=$id_ficha;
-      $return[$i]+=self::ficha_concepto($id_nomina,$id_periodo,$id_ficha);
-    }
-    return $return;
-  }
-
   public static function onAddValorFicha($access,$id_nomina,$id_periodo,$ids_ficha,$id_concepto){
     $db=SIGA::DBController();
 
@@ -2507,12 +2441,14 @@ class nomina{
             F.id_escala_salarial,
             F.activo,
             PN.genero,
-            ES.escala as escala_salarial
+            ES.escala as escala_salarial,
+            UC.coordinacion as unidad_coordinacion
           FROM
             modulo_nomina.ficha_concepto as FC
               INNER JOIN modulo_nomina.nomina as N ON FC.id_nomina=N.id
               INNER JOIN modulo_nomina.ficha AS F ON F.id=FC.id_ficha
               LEFT JOIN modulo_nomina.escala_salarial ES ON ES.id=F.id_escala_salarial
+              LEFT JOIN modulo_base.unidad_coordinacion UC ON UC.id=F.id_unidad_coordinacion
               LEFT JOIN modulo_base.persona as P ON F.id_persona=P.id
               LEFT JOIN modulo_base.persona_natural as PN ON P.id=PN.id_persona
               LEFT JOIN modulo_nomina.cargo as C ON C.id=(
@@ -2555,6 +2491,7 @@ class nomina{
       }
       $result[$i]["cuenta_nomina"]=$ficha[$i]["cuenta_nomina"];
       $result[$i]["escala_salarial"]=$ficha[$i]["escala_salarial"];
+      $result[$i]["unidad_coordinacion"]=$ficha[$i]["unidad_coordinacion"];
       //buscar si la ficha existe en otras nominas en el mismo periodo
       $result[$i]["otra_nomina"]=$db->Execute("select distinct FC.id_nomina, N.codigo, N.nomina from modulo_nomina.ficha_concepto FC, modulo_nomina.nomina N where FC.id_periodo=$id_periodo and not FC.id_nomina in ($id_nomina) and FC.id_ficha='".$ficha[$i]["id_ficha"]."' and N.id=FC.id_nomina");
       $result[$i]["activo_otra_nomina"]="";

@@ -43,11 +43,6 @@ class MODULO extends nomina{
         header('Content-Type: text/plain; charset=utf-8');
         print json_encode(self::onAdd($access,SIGA::param("id_nomina"),SIGA::param("id_periodo"),$ids_ficha,SIGA::param("id_concepto")));
         break;
-      case "onAddEscala":
-        $ids_ficha=json_decode(SIGA::param("id_ficha",false),true);
-        header('Content-Type: text/plain; charset=utf-8');
-        print json_encode(self::onAddEscala($access,SIGA::param("id_nomina"),SIGA::param("id_periodo"),$ids_ficha,SIGA::param("id_concepto")));
-        break;
       case "onAddValorFicha":
         $ids_ficha=json_decode(SIGA::param("id_ficha",false),true);
         header('Content-Type: text/plain; charset=utf-8');

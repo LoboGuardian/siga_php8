@@ -35,7 +35,7 @@ siga.define('nomina', {
       cerrado: null,
       periodo_id: null,
       periodo_denominacion: null,
-      periodo_detalle: {},      
+      periodo_detalle: {},
       nomina_id: [],
       nomina_denominacion: null,
     });
@@ -1066,7 +1066,7 @@ siga.define('nomina', {
     });
     //FIN VENTANA IMPORTACION DE CONCEPTOS DESDE EXCEL
 
-  
+
     //VENTANA PARA CERRAR PERIODO
     me.internal.ventanaCerrarPeriodo=Ext.create('Ext.window.Window', {
       title: 'Cerrar Periodo / Abrir Nuevo',
@@ -1112,8 +1112,8 @@ siga.define('nomina', {
 
         var id_periodo=me.internal.periodo_id;
         var tipo = me.internal.periodo_detalle['tipo'];
-        var fecha_inicio = me.internal.periodo_detalle['fecha_inicio'];        
-        var fecha_culminacion = me.internal.periodo_detalle['fecha_culminacion'];        
+        var fecha_inicio = me.internal.periodo_detalle['fecha_inicio'];
+        var fecha_culminacion = me.internal.periodo_detalle['fecha_culminacion'];
         var codigo = me.internal.periodo_detalle['codigo'];
         var descripcion = me.internal.periodo_detalle['descripcion'] ?? '';
 
@@ -1123,19 +1123,19 @@ siga.define('nomina', {
         me.getCmp("fecha_actual_VentanaCerrarPeriodo").setValue(me.internal.periodo_detalle['fecha'] ?? '');
         me.getCmp("tipo_periodo_VentanaCerrarPeriodo").setValue(tipo ?? '');
 
-        
+
 
         if(codigo){
           var len = codigo.length;
           //si el ultimo periodo del año, restablecer codifo
-          if(fecha_culminacion.substr(5)==="12-31"){ 
+          if(fecha_culminacion.substr(5)==="12-31"){
             codigo = 0;
           }
 
-          var codigo_numero = Number(codigo) + 1;          
+          var codigo_numero = Number(codigo) + 1;
           var codigo_nuevo = String(codigo_numero>0?codigo_numero:0).padStart(len,"0");
           me.getCmp("codigo_VentanaCerrarPeriodo").setValue(codigo_nuevo);
-        }        
+        }
 
         const bisiesto = (a) => ((a%4==0 && a%100!=0)||(a%400==0));
         const dias_mes = (a) => [31, bisiesto(a)?29:28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -1150,7 +1150,7 @@ siga.define('nomina', {
             fecha_inicio_nuevo = Ext.Date.add(fecha_inicio, Ext.Date.DAY, 1);
             fecha_culminacion_nuevo = Ext.Date.add(fecha_inicio, Ext.Date.DAY, 7);
 
-            
+
 
             //DETECTAR FORMATO ALCALDIA MEJIA "SEMANA 01 DE ENERO" Fecha Inicio: Lunes, Fecha Fin: Viernes
             const descripcion_array = descripcion.split(' ');
@@ -1177,7 +1177,7 @@ siga.define('nomina', {
               else if (dia_semana < 5) {
                 diasParaViernes = 5 - dia_semana;
               }
-              
+
               //Sumar 4 dias para que llegue a viernes
               fecha_culminacion_nuevo = Ext.Date.add(fecha_inicio_nuevo, Ext.Date.DAY, diasParaViernes);
 
@@ -1205,12 +1205,12 @@ siga.define('nomina', {
               ].join(" ");
             }
 
-              
+
 
 
             fecha_inicio_nuevo = Ext.Date.format(fecha_inicio_nuevo, 'Y-m-d');
             fecha_culminacion_nuevo = Ext.Date.format(fecha_culminacion_nuevo, 'Y-m-d');
-            
+
           }
           else if(tipo === 'Q') {// quincenal
             fecha_inicio = fecha_inicio.split('-');
@@ -1245,7 +1245,7 @@ siga.define('nomina', {
 
               var mes_reemplazar = meses[Number(mes)-1];
               descripcion = descripcion.replaceAll(mes_buscar, mes_reemplazar);
-            }            
+            }
           }
 
           me.getCmp("fecha_inicio_VentanaCerrarPeriodo").setValue(fecha_inicio_nuevo);
@@ -1254,7 +1254,7 @@ siga.define('nomina', {
 
 
 
-        if(descripcion){          
+        if(descripcion){
           me.getCmp("descripcion_VentanaCerrarPeriodo").setValue(descripcion);
         }
 
@@ -1262,18 +1262,18 @@ siga.define('nomina', {
 
         me.internal.ventanaCerrarPeriodo.show();
       },
-      
-      setMessage: function(_text,_color,_time){      
+
+      setMessage: function(_text,_color,_time){
         const me2 = this;
         if(me2.messageTimeOutHandler)
           window.clearTimeout(me2.messageTimeOutHandler);
-        
+
         if(!me.getCmp('messageVentanaCerrarPeriodo')) return;
-        
-        if(!_text){            
+
+        if(!_text){
           me.getCmp('messageVentanaCerrarPeriodo').setText('&nbsp;',false);
           return;
-        }        
+        }
         if(!_color)
           _color="black";
         me.getCmp('messageVentanaCerrarPeriodo').setText("<div style='color: "+_color+";'>"+_text+"</div>",false);
@@ -1284,7 +1284,7 @@ siga.define('nomina', {
         },_time);
       },
 
-    
+
       items:[
         {
           xtype: 'label',
@@ -1295,7 +1295,7 @@ siga.define('nomina', {
         {
           xtype:'fieldcontainer',
           fieldLabel: 'Cerrar Periodo',
-          layout: 'hbox',          
+          layout: 'hbox',
           items:[
             {
               xtype:'textfield',
@@ -1422,7 +1422,7 @@ siga.define('nomina', {
               width: 150,
               listeners: {
                 click: function(){
-                  
+
                   var id_periodo=me.internal.periodo_id;
                   var _codigo=Ext.String.trim(me.getCmp("codigo_VentanaCerrarPeriodo").getValue());
                   var _descripcion=Ext.String.trim(me.getCmp("descripcion_VentanaCerrarPeriodo").getValue());
@@ -1630,7 +1630,7 @@ siga.define('nomina', {
           },
           { xtype: 'menuseparator' },
           {
-            text: 'Administrar Fichas',
+            text: 'Administrar - Fichas',
             listeners: {
               click: function(){
                 siga.open("ficha");
@@ -1638,7 +1638,7 @@ siga.define('nomina', {
             }
           },
           {
-            text: 'Administrar Cargos',
+            text: 'Administrar - Cargos',
             listeners: {
               click: function(){
                 siga.open("nomina_cargo");
@@ -1646,10 +1646,18 @@ siga.define('nomina', {
             }
           },
           {
-            text: 'Administrar Escala Salarial',
+            text: 'Administrar - Escala Salarial',
             listeners: {
               click: function(){
                 siga.open("nomina_escala_salarial");
+              }
+            }
+          },
+          {
+            text: 'Administrar - Unidades Administrativas',
+            listeners: {
+              click: function(){
+                siga.open("unidad_coordinacion");
               }
             }
           }
@@ -3248,7 +3256,7 @@ siga.define('nomina', {
           locked: true,
           lockable: true,
           draggable: false,
-          resizable: false
+          resizable: false,
         }
     );
 

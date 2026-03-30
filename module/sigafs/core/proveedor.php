@@ -65,6 +65,7 @@
 											<option value="J" title="JURÍDICO">J</option>
 											<option value="V" title="FIRMA PERSONAL">V</option>
 											<option value="G" title="GOBIERNO">G</option>
+											<option value="C" title="CONSEJO COMUNAL">C</option>
 											<!--<option value="" title="SIN NÚMERO">S/N</option>-->
 										</select>
 										<INPUT id="RIF_NUMERO_FP" class='TextoCampoInput' type='text' size='15' onkeypress="return soloNum(event)" /></td>
